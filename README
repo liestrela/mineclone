@@ -1,0 +1,7 @@
+mineclone - minecraft clone
+---------------------------
+just started this project, so pretty much nothing is done yet.
+
+dependencies:
+- GLFW3;
+- CGLM (OpenGL Mathematics for C);
