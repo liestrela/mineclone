@@ -7,11 +7,54 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 SDL_Window *win = nullptr;
 SDL_GLContext ctx;
 
-const char *vertex_source[] = { "#version 140\nin vec2 vertex_pos; void main() { gl_Position = vec4(vertex_pos.x, vertex_pos.y, 0, 1); }" };
-const char *frag_source[] = { "#version 140\nout vec4 frag; void main() { frag = vec4( 1.0, 1.0, 1.0, 1.0 ); }" };
+const char *vertex_source[] = {
+R"(
+#version 330 core
+
+layout (location = 0) in vec2 vertex_pos;
+layout (location = 1) in vec2 i_tex_c;
+
+out vec2 tex_c;
+
+void main() {
+    gl_Position = vec4(vertex_pos.x, vertex_pos.y, 0, 1);
+    tex_c = i_tex_c;
+}
+)"
+};
+
+const char *frag_source[] = {
+R"(
+#version 330 core
+
+in vec2 tex_c;
+
+out vec4 frag;
+
+uniform sampler2D tex;
+
+void main() {
+    frag = texture(tex, tex_c);
+}
+)" };
+
+const float square_vs[] = {
+    -0.5, -0.5, 0.0, 0.0,
+    -0.5,  0.5, 0.0, 1.0,
+     0.5, -0.5, 1.0, 0.0,
+     0.5,  0.5, 1.0, 1.0
+};
+
+const unsigned square_idx[] = {
+    0, 1, 2,
+    2, 3, 1
+};
 
 int
 init_gl()
@@ -27,13 +70,13 @@ init_gl()
         SDL_WINDOW_OPENGL
     );
     
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
     ctx = SDL_GL_CreateContext(win);
     assert(ctx != NULL);
-
+    
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    
     GLenum glew_ok = glewInit();
     assert(glew_ok == GLEW_OK);
     
@@ -53,7 +96,7 @@ init_gl()
         glGetShaderInfoLog(vertex_shader, sizeof(shader_log), NULL, shader_log);
         std::printf("error: %s\n", shader_log);
 
-        return EXIT_FAILURE;
+        return -1;
     }
 
     glAttachShader(prog, vertex_shader);
@@ -72,14 +115,11 @@ init_gl()
         glGetShaderInfoLog(frag_shader, sizeof(shader_log), NULL, shader_log);
         std::printf("error: %s\n", shader_log);
 
-        return EXIT_FAILURE;
+        return -1;
     }
 
     glAttachShader(prog, frag_shader);
     glLinkProgram(prog);
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(frag_shader);
 
     GLint link_ok;
     glGetProgramiv(prog, GL_LINK_STATUS, &link_ok);
@@ -90,10 +130,15 @@ init_gl()
         glGetProgramInfoLog(prog, 1024, NULL, log);
         std::printf("error: %s\n", log);
 
-        return EXIT_FAILURE;
+        return -1;
     }
 
+    glDeleteShader(vertex_shader);
+    glDeleteShader(frag_shader);
+
     glUseProgram(prog);
+
+    glUniform1i(glGetUniformLocation(prog, "tex"), 0);
 
     return 0;
 }
@@ -101,9 +146,41 @@ init_gl()
 int
 main(void)
 {
-    init_gl();
+    if (init_gl() < 0) return EXIT_FAILURE;
+    
+    /* create square */
+    GLuint vao, vbo, ebo, tex;
+    
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
-    glClearColor(0, 0, 0, 1);
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vs), square_vs, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_idx), square_idx, GL_STATIC_DRAW);
+    
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void *)(2*sizeof(float)));
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+
+    /* create square texture */
+    int x, y, n;
+    unsigned char *tex_data = stbi_load("../res/grass.png", &x, &y, &n, 0);
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(tex_data);
+    
+    glClearColor(0.0, 0.0, 0.0, 1);
     
     bool running = true;
     while (running) {
@@ -114,6 +191,11 @@ main(void)
             }
         }
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
         SDL_GL_SwapWindow(win);
         
     }

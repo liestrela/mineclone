@@ -3,7 +3,7 @@ project(mineclone VERSION 0.1.0 LANGUAGES C CXX)
 
 add_subdirectory(lib/sdl2 lib/glew)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(mineclone src/main.cpp)
 
