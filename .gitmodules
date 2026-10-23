@@ -1,8 +1,0 @@
-[submodule "lib/sdl2"]
-	path = lib/sdl2
-	url = https://github.com/libsdl-org/SDL
-	branch = SDL2
-[submodule "lib/glew"]
-	path = lib/glew
-	url = https://github.com/nigels-com/glew
-	branch = glew-2.3.1
