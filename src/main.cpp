@@ -1,19 +1,19 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
+#include <unordered_map>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_video.h>
+#include <SDL_image.h>
+
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include <unordered_map>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 #define DEFAULT_WIDTH  600
 #define DEFAULT_HEIGHT 400
@@ -185,14 +185,15 @@ main(void)
 
     /* create square texture */
     int x, y, n;
-    unsigned char *tex_data = stbi_load("../res/grass.png", &x, &y, &n, 0);
+    SDL_Surface *tex_surf = IMG_Load("../res/grass.png");
+    unsigned char *tex_data = (unsigned char *)tex_surf->pixels;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
     glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(tex_data);
+    SDL_FreeSurface(tex_surf);
     
     glm::mat4 model = glm::mat4(1.0); 
     glm::mat4 view = glm::mat4(1.0);

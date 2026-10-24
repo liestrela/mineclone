@@ -23,6 +23,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glew)
 
 # sdl2 stuff
+set(SDL2_IMAGE_INSTALL OFF)
+set(SDL2_DISABLE_INSTALL OFF)
+
 FetchContent_Declare(
     SDL2
     GIT_REPOSITORY	https://github.com/libsdl-org/SDL.git
@@ -31,5 +34,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
+# sd2_image stuff
+FetchContent_Declare(
+    SDL2_image
+    GIT_REPOSITORY	https://github.com/libsdl-org/SDL_image.git
+	GIT_TAG 	release-2.6.x
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(SDL2_image)
+
 add_executable(mineclone src/main.cpp)
-target_link_libraries(mineclone PRIVATE glm::glm SDL2::SDL2 libglew_static)
+target_link_libraries(mineclone PRIVATE glm::glm SDL2::SDL2 SDL2_image::SDL2_image libglew_static)
