@@ -27,7 +27,7 @@ const char *vertex_source[] = {
 R"(
 #version 330 core
 
-layout (location = 0) in vec2 vertex_pos;
+layout (location = 0) in vec3 vertex_pos;
 layout (location = 1) in vec2 i_tex_c;
 
 uniform mat4 model, view, proj;
@@ -35,7 +35,7 @@ uniform mat4 model, view, proj;
 out vec2 tex_c;
 
 void main() {
-    gl_Position = proj * view * model * vec4(vertex_pos.x, vertex_pos.y, 0, 1);
+    gl_Position = proj * view * model * vec4(vertex_pos.x, vertex_pos.y, vertex_pos.z, 1);
     tex_c = i_tex_c;
 }
 )"
@@ -56,22 +56,63 @@ void main() {
 }
 )" };
 
-const float square_vs[] = {
-    -0.5, -0.5, 0.0, 0.0,
-    -0.5,  0.5, 0.0, 1.0,
-     0.5, -0.5, 1.0, 0.0,
-     0.5,  0.5, 1.0, 1.0
-};
+const float cube_vs[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-const unsigned square_idx[] = {
-    0, 1, 2,
-    2, 3, 1
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
 
 int
 init_gl()
 {
     SDL_Init(SDL_INIT_VIDEO);
+    
+    /* OpenGL 3.3 core */
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    
+    /* MSAA 4x */
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
     
     win = SDL_CreateWindow(
         "MineClone",
@@ -83,12 +124,8 @@ init_gl()
     );
     
     ctx = SDL_GL_CreateContext(win);
-    assert(ctx != NULL);
-    
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    
+    assert(ctx != NULL);    
+
     GLenum glew_ok = glewInit();
     assert(glew_ok == GLEW_OK);
     
@@ -102,7 +139,7 @@ init_gl()
     GLint vshader_ok;
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &vshader_ok);
     if (vshader_ok != GL_TRUE) {
-        std::fprintf(stderr, "couldn't compile shader %d\n", vertex_shader);
+        std::fprintf(stderr, "couldn't compile vertex shader");
 
         char shader_log[1024];
         glGetShaderInfoLog(vertex_shader, sizeof(shader_log), NULL, shader_log);
@@ -121,7 +158,7 @@ init_gl()
     GLint fshader_ok;
     glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &fshader_ok);
     if (fshader_ok != GL_TRUE) {
-        std::fprintf(stderr, "couldn't compile shader %d\n", frag_shader);
+        std::fprintf(stderr, "couldn't compile fragment shader");
 
         char shader_log[1024];
         glGetShaderInfoLog(frag_shader, sizeof(shader_log), NULL, shader_log);
@@ -150,6 +187,7 @@ init_gl()
 
     glUseProgram(prog);
 
+    glEnable(GL_DEPTH_TEST);
     glUniform1i(glGetUniformLocation(prog, "tex"), 0);
 
     return 0;
@@ -162,28 +200,24 @@ main(void)
 
     if (init_gl() < 0) return EXIT_FAILURE;
     
-    /* create square */
-    GLuint vao, vbo, ebo, tex;
-    
+    /* create cube */
+    GLuint vao, vbo, tex;
+
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
 
     glBindVertexArray(vao);
     
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vs), square_vs, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_idx), square_idx, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vs), cube_vs, GL_STATIC_DRAW);
     
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4*sizeof(float), (void *)(2*sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5*sizeof(float), 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5*sizeof(float), (void *)(3*sizeof(float)));
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
-    /* create square texture */
+    /* create cube texture */
     int x, y, n;
     SDL_Surface *tex_surf = IMG_Load("../res/grass.png");
     unsigned char *tex_data = (unsigned char *)tex_surf->pixels;
@@ -191,6 +225,8 @@ main(void)
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
     glGenerateMipmap(GL_TEXTURE_2D);
     SDL_FreeSurface(tex_surf);
@@ -277,11 +313,11 @@ main(void)
         glUniformMatrix4fv(view_loc,  1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(proj_loc,  1, GL_FALSE, glm::value_ptr(proj));
         
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glBindTexture(GL_TEXTURE_2D, tex);
         glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         SDL_GL_SwapWindow(win);
         
